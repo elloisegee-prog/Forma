@@ -11,13 +11,21 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23c9a96e'/><text y='.9em' font-size='70' x='15' fill='white' font-family='serif'>F</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Jost:wght@400;500;600;700&display=swap"/>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js" onload="initFirebase()"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  const FB={apiKey:"AIzaSyBRp_-5kstVW4SjKDPuDmXuHMVrXZTgMgQ",authDomain:"forma-d4a6c.firebaseapp.com",databaseURL:"https://forma-d4a6c-default-rtdb.firebaseio.com",projectId:"forma-d4a6c",storageBucket:"forma-d4a6c.firebasestorage.app",messagingSenderId:"442562165000",appId:"1:442562165000:web:b360c0ccff37554f4114bd"};
+  const app=initializeApp(FB);
+  const database=getDatabase(app);
+  window._fbSet=(path,val)=>set(ref(database,path),val);
+  window._fbListen=(path,cb)=>onValue(ref(database,path),snap=>cb(snap.val()));
+  window._fbReady=true;
+  if(window._fbReadyCb)window._fbReadyCb();
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{min-height:100%;background:#f9f7f3;font-family:'Jost',sans-serif;color:#2c2417;-webkit-font-smoothing:antialiased}
-::-webkit-scrollbar{width:3px}
-::-webkit-scrollbar-thumb{background:#d5c9b5;border-radius:3px}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#d5c9b5;border-radius:3px}
 input{font-family:'Jost',sans-serif;-webkit-appearance:none}
 button{font-family:'Jost',sans-serif;cursor:pointer}
 .serif{font-family:'Cormorant Garamond',serif}
@@ -34,7 +42,6 @@ button{font-family:'Jost',sans-serif;cursor:pointer}
 .stat-box .stat-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#b0a898;margin-bottom:4px}
 .stat-box .stat-val{font-size:20px;font-weight:700;font-family:'Cormorant Garamond',serif;line-height:1;color:#2c2417}
 .tab-btn{flex:1;padding:8px 0;border-radius:9px;border:none;background:transparent;color:#9a8f83;font-weight:600;font-size:13px;transition:all .2s}
-.tab-btn.active{color:#fff}
 .mood-btn{font-size:26px;padding:8px 10px;border-radius:12px;border:1.5px solid transparent;background:transparent;transition:all .15s}
 .food-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f5f0e8}
 .macro-box{background:#faf8f5;border:1px solid #ede8df;border-radius:10px;padding:8px 12px;flex:1;text-align:center;min-width:60px}
@@ -61,22 +68,16 @@ button{font-family:'Jost',sans-serif;cursor:pointer}
 .bar-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:4px}
 .bar-fill{width:100%;border-radius:4px 4px 0 0;min-height:2px;transition:height .4s}
 .bar-label{font-size:9px;color:#b0a898;font-weight:600}
-.line-chart-wrap{overflow-x:auto}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
-const FB={apiKey:"AIzaSyBRp_-5kstVW4SjKDPuDmXuHMVrXZTgMgQ",authDomain:"forma-d4a6c.firebaseapp.com",databaseURL:"https://forma-d4a6c-default-rtdb.firebaseio.com",projectId:"forma-d4a6c",storageBucket:"forma-d4a6c.firebasestorage.app",messagingSenderId:"442562165000",appId:"1:442562165000:web:b360c0ccff37554f4114bd"};
-let db=null;
 function initFirebase(){
-  try{
-    if(typeof firebase==="undefined")return;
-    const app=firebase.apps.length?firebase.apps[0]:firebase.initializeApp(FB);
-    db=firebase.database();
-    startSync();
-  }catch(e){console.error(e);}
+  if(window._fbReady){startSync();}
+  else{window._fbReadyCb=startSync;}
 }
+setTimeout(initFirebase,200);
 const USERS=["Elloise","Georgia"];
 const THEME={Elloise:{dot:"#c9a96e",tag:"#f5f0e8",text:"#8a6a3a"},Georgia:{dot:"#9aab8a",tag:"#f0f4ed",text:"#5a7050"}};
 const MOODS=["😔","😐","🙂","😊","🥰"];
@@ -87,14 +88,13 @@ function fmtDate(d){return new Date(d+"T00:00:00").toLocaleDateString("en-AU",{d
 function fmtDay(d){return new Date(d+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short"});}
 function objToArr(o){if(!o)return[];if(Array.isArray(o))return o;return Object.values(o);}
 function startSync(){
-  if(!db){state.sync="offline";render();return;}
-  db.ref("forma").on("value",snap=>{
-    const raw=snap.val();
+  if(!window._fbListen){state.sync="offline";render();return;}
+  window._fbListen("forma",raw=>{
     if(raw){const out={};for(const u of USERS){const ud=raw[u]||{};const def=state.data[u];out[u]={goalWeight:ud.goalWeight??def.goalWeight,calGoal:ud.calGoal??def.calGoal,weights:objToArr(ud.weights),foods:objToArr(ud.foods),waters:objToArr(ud.waters),steps:objToArr(ud.steps),moods:objToArr(ud.moods)};}state.data=out;}
     state.sync="live";render();
-  },()=>{state.sync="offline";render();});
+  });
 }
-function persist(nd){state.data=nd;render();if(db)db.ref("forma").set(nd).catch(()=>{state.sync="offline";render();});}
+function persist(nd){state.data=nd;render();if(window._fbSet)window._fbSet("forma",nd).catch(()=>{state.sync="offline";render();});}
 function ud(){return state.data[state.user];}
 function accent(){return THEME[state.user].dot;}
 function td(){return todayStr();}
@@ -109,23 +109,23 @@ function todayMood(){return ud().moods.find(m=>m.date===td());}
 function latestWt(){return[...ud().weights].sort((a,b)=>b.date.localeCompare(a.date))[0]?.kg;}
 function prevWt(){return[...ud().weights].sort((a,b)=>b.date.localeCompare(a.date))[1]?.kg;}
 function firstWt(){return[...ud().weights].sort((a,b)=>a.date.localeCompare(b.date))[0]?.kg;}
-function arcSVG(pct,color,val,label,size=72,stroke=5){const r=(size-stroke*2)/2,circ=2*Math.PI*r,p=Math.min(Math.max(pct||0,0),1);return '<div style="display:flex;flex-direction:column;align-items:center;gap:5px"><svg width="'+size+'" height="'+size+'"><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="#ede8df" stroke-width="'+stroke+'"/><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+stroke+'" stroke-dasharray="'+(p*circ)+' '+circ+'" stroke-linecap="round" transform="rotate(-90 '+size/2+' '+size/2+')"/><text x="'+size/2+'" y="'+(size/2+6)+'" text-anchor="middle" fill="#2c2417" font-size="12" font-weight="700" font-family="\'Cormorant Garamond\',serif">'+val+'</text></svg><div class="lbl" style="margin-bottom:0">'+label+'</div></div>';}
-function barChart(data,key,color,height=100){const max=Math.max(...data.map(d=>d[key]||0),1);return '<div class="bar-chart" style="height:'+height+'px">'+data.map(d=>'<div class="bar-col"><div style="flex:1;display:flex;align-items:flex-end;width:100%"><div class="bar-fill" style="height:'+Math.round(((d[key]||0)/max)*(height-20))+'px;background:'+color+';width:100%"></div></div><div class="bar-label">'+(d.day||d.date||"")+'</div></div>').join("")+'</div>';}
+function arcSVG(pct,color,val,label,sz=72,st=5){const r=(sz-st*2)/2,c=2*Math.PI*r,p=Math.min(Math.max(pct||0,0),1);return '<div style="display:flex;flex-direction:column;align-items:center;gap:5px"><svg width="'+sz+'" height="'+sz+'"><circle cx="'+sz/2+'" cy="'+sz/2+'" r="'+r+'" fill="none" stroke="#ede8df" stroke-width="'+st+'"/><circle cx="'+sz/2+'" cy="'+sz/2+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+st+'" stroke-dasharray="'+(p*c)+' '+c+'" stroke-linecap="round" transform="rotate(-90 '+sz/2+' '+sz/2+')"/><text x="'+sz/2+'" y="'+(sz/2+6)+'" text-anchor="middle" fill="#2c2417" font-size="12" font-weight="700" font-family="\'Cormorant Garamond\',serif">'+val+'</text></svg><div class="lbl" style="margin-bottom:0">'+label+'</div></div>';}
+function barChart(data,key,color,height=100){const max=Math.max(...data.map(d=>d[key]||0),1);return'<div class="bar-chart" style="height:'+height+'px">'+data.map(d=>'<div class="bar-col"><div style="flex:1;display:flex;align-items:flex-end;width:100%"><div class="bar-fill" style="height:'+Math.round(((d[key]||0)/max)*(height-20))+'px;background:'+color+';width:100%"></div></div><div class="bar-label">'+(d.day||d.date||"")+'</div></div>').join("")+'</div>';}
 function lineChart(data,key,color,goalLine,w=320,h=160){
-  if(data.filter(d=>d[key]).length<2)return '<div style="text-align:center;padding:30px 0;color:#b0a898;font-size:13px">Log on 2+ days to see chart</div>';
+  if(data.filter(d=>d[key]).length<2)return'<div style="text-align:center;padding:30px 0;color:#b0a898;font-size:13px">Log on 2+ days to see chart</div>';
   const valid=data.map(d=>d[key]).filter(v=>v!=null);
   const minV=Math.min(...valid)*0.995,maxV=Math.max(...valid)*1.005;
   const px=i=>(i/(data.length-1))*(w-40)+20;
   const py=v=>h-10-((v-minV)/(maxV-minV||1))*(h-30);
   let path="",dots="",labels="",ptLabels="";let first=true;
   data.forEach((d,i)=>{if(d[key]==null)return;const x=px(i),y=py(d[key]);path+=first?"M"+x+","+y:"L"+x+","+y;dots+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="'+color+'"/>';if(i===0||i===data.length-1)labels+='<text x="'+x+'" y="'+h+'" text-anchor="middle" font-size="9" fill="#b0a898" font-family="Jost,sans-serif">'+(d.date||"")+'</text>';first=false;});
-  const isMinMax=(d)=>{const vs=data.filter(x=>x[key]!=null).map(x=>x[key]);return d[key]===Math.min(...vs)||d[key]===Math.max(...vs);};
-  data.filter(d=>d[key]!=null).forEach((d,i,arr)=>{if(d===arr[0]||d===arr[arr.length-1]||isMinMax(d)){const allIdx=data.indexOf(d);ptLabels+='<text x="'+px(allIdx)+'" y="'+(py(d[key])-8)+'" text-anchor="middle" font-size="9" fill="'+color+'" font-weight="700" font-family="Jost,sans-serif">'+d[key].toFixed(1)+'</text>';}});
-  const yTicks=[minV,(minV+maxV)/2,maxV];
-  const gridLines=yTicks.map(v=>'<line x1="26" y1="'+py(v)+'" x2="'+(w-4)+'" y2="'+py(v)+'" stroke="#f0ebe3" stroke-width="1"/>').join("");
-  const yLabels=yTicks.map(v=>'<text x="22" y="'+(py(v)+4)+'" text-anchor="end" font-size="9" fill="#b0a898" font-family="Jost,sans-serif">'+v.toFixed(1)+'</text>').join("");
-  let gl="";if(goalLine){const gy=py(goalLine);if(gy>0&&gy<h)gl='<line x1="20" y1="'+gy+'" x2="'+(w-20)+'" y2="'+gy+'" stroke="#9aab8a" stroke-width="1.5" stroke-dasharray="4,4"/>';}
-  return '<svg width="100%" viewBox="0 0 '+w+' '+h+'" style="overflow:visible">'+gridLines+gl+'<path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round"/>'+dots+ptLabels+labels+yLabels+'</svg>';
+  const vs=data.filter(d=>d[key]!=null).map(d=>d[key]);
+  data.filter(d=>d[key]!=null).forEach((d,i,arr)=>{if(d===arr[0]||d===arr[arr.length-1]||d[key]===Math.min(...vs)||d[key]===Math.max(...vs)){const allIdx=data.indexOf(d);ptLabels+='<text x="'+px(allIdx)+'" y="'+(py(d[key])-8)+'" text-anchor="middle" font-size="9" fill="'+color+'" font-weight="700" font-family="Jost,sans-serif">'+d[key].toFixed(1)+'</text>';}});
+  const yT=[minV,(minV+maxV)/2,maxV];
+  const gl=yT.map(v=>'<line x1="26" y1="'+py(v)+'" x2="'+(w-4)+'" y2="'+py(v)+'" stroke="#f0ebe3" stroke-width="1"/>').join("");
+  const yl=yT.map(v=>'<text x="22" y="'+(py(v)+4)+'" text-anchor="end" font-size="9" fill="#b0a898" font-family="Jost,sans-serif">'+v.toFixed(1)+'</text>').join("");
+  let gll="";if(goalLine){const gy=py(goalLine);if(gy>0&&gy<h)gll='<line x1="20" y1="'+gy+'" x2="'+(w-20)+'" y2="'+gy+'" stroke="#9aab8a" stroke-width="1.5" stroke-dasharray="4,4"/>';}
+  return'<svg width="100%" viewBox="0 0 '+w+' '+h+'" style="overflow:visible">'+gl+gll+'<path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round"/>'+dots+ptLabels+labels+yl+'</svg>';
 }
 function last7(){return Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));const p=n=>String(n).padStart(2,"0");const ds=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());return{day:fmtDay(ds),cals:state.data[state.user].foods.filter(f=>f.date===ds).reduce((s,f)=>s+f.cal,0),water:(state.data[state.user].waters.find(w=>w.date===ds)||{ml:0}).ml,steps:(state.data[state.user].steps.find(s=>s.date===ds)||{count:0}).count};});}
 function render(){document.getElementById("app").innerHTML=buildApp();}
@@ -143,64 +143,43 @@ function buildApp(){
   (state.sync==="offline"?'<div class="offline-banner">⚠️ Working offline — entries will not sync until connection is restored.</div>':"")+
   '<div style="display:flex;margin-top:18px;margin-bottom:20px;background:#fff;border-radius:12px;border:1px solid #ede8df;padding:4px">'+
   ["today","progress","together"].map((tt,i)=>'<button class="tab-btn" onclick="switchTab(\''+tt+'\')" style="background:'+(t===tt?a:"transparent")+';color:'+(t===tt?"#fff":"#9a8f83")+'">'+["Today","Progress","Together"][i]+'</button>').join("")+
-  '</div>'+
-  (t==="today"?buildToday():"")+
-  (t==="progress"?buildProgress():"")+
-  (t==="together"?buildTogether():"")+
+  '</div>'+(t==="today"?buildToday():"")+(t==="progress"?buildProgress():"")+(t==="together"?buildTogether():"")+
   '</div></div>'+(state.showScanner?buildScanner():"");
 }
 function buildToday(){
   const u=state.user,a=accent(),th=THEME[u],lw=latestWt(),pw=prevWt(),fw=firstWt();
   const diff=lw&&pw?(lw-pw).toFixed(1):null,lost=lw&&fw&&fw>lw?(fw-lw).toFixed(1):null;
   const tm=todayMood(),tw=todayWater(),ts=todayStepsVal(),tc=todayCals(),foods=todayFoods();
-  let html='<div style="margin-bottom:20px"><div class="serif" style="font-size:28px;font-weight:600">'+new Date().toLocaleDateString("en-AU",{weekday:"long"})+',</div>';
-  html+='<div class="serif" style="font-size:20px;color:#7a6a58">'+new Date().toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"})+'</div></div>';
-  html+='<div class="card" style="display:flex;justify-content:space-around;padding:20px 12px">'+arcSVG(ud().calGoal?tc/ud().calGoal:0,a,tc,"Calories")+arcSVG(tw/2000,"#7eafc0",tw+"ml","Water")+arcSVG(ts/10000,"#9aab8a",ts>=1000?(ts/1000).toFixed(1)+"k":ts||0,"Steps")+arcSVG(1,"#d4b483",MOODS[tm?.mood??state.moodSel],"Mood")+'</div>';
-  html+='<div class="card"><div class="serif" style="font-size:20px;font-weight:600;margin-bottom:14px">Weight</div>';
-  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
-  html+='<div class="stat-box"><div class="stat-label">Current</div><div class="stat-val">'+(lw?lw+" kg":"—")+'</div></div>';
-  if(diff!==null)html+='<div class="stat-box"><div class="stat-label">Change</div><div class="stat-val" style="color:'+(+diff<0?"#5a8f6a":"#c0504a")+'">'+(+diff>0?"+":"")+diff+' kg</div></div>';
-  if(lost)html+='<div class="stat-box"><div class="stat-label">Total lost</div><div class="stat-val" style="color:#5a8f6a">−'+lost+' kg</div></div>';
-  html+='<div class="stat-box"><div class="stat-label">Goal</div><div class="stat-val" style="color:'+a+'">'+(ud().goalWeight?ud().goalWeight+" kg":"—")+'</div></div></div>';
-  html+='<div class="divider"></div>';
-  html+='<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><div class="lbl">Log today\'s weight (kg)</div><input class="nude-input" type="number" step="0.1" value="'+state.wt+'" placeholder="e.g. 115.0" oninput="state.wt=this.value"/></div><div style="margin-bottom:10px"><button class="btn" style="background:'+a+'" onclick="logWeight()">Log</button></div></div>';
-  html+='<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><div class="lbl">Set goal weight (kg)</div><input class="nude-input" type="number" step="0.1" value="'+state.goalWt+'" placeholder="Currently '+(ud().goalWeight||"—")+' kg" oninput="state.goalWt=this.value"/></div><div style="margin-bottom:10px"><button class="btn btn-outline" onclick="setGoalWeight()">Set</button></div></div>';
-  if(ud().weights.length>0){
-    html+='<div style="margin-top:14px"><div class="divider"></div><div class="lbl">Weight history</div>';
-    html+=[...ud().weights].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7).map(w=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f0e8"><span style="font-size:13px;color:#7a6a58">'+fmtDate(w.date)+'</span><div style="display:flex;align-items:center;gap:10px"><span style="font-weight:700;font-size:14px;font-family:\'Cormorant Garamond\',serif">'+w.kg+' kg</span><button onclick="removeWeight(\''+w.date+'\')" style="background:none;border:none;color:#c5bdb2;font-size:14px;padding:0 2px">✕</button></div></div>').join("");
-    html+='</div>';
-  }
-  html+='</div>';
-  html+='<div class="card"><div class="serif" style="font-size:20px;font-weight:600;margin-bottom:4px">Calorie Goal</div>';
-  html+='<div style="font-size:12px;color:#b0a898;margin-bottom:12px">Target: <strong style="color:'+a+'">'+(ud().calGoal?ud().calGoal+" kcal/day":"Not set yet")+'</strong></div>';
-  if(u==="Elloise")html+='<div class="mounjaro-tip"><strong>On Mounjaro:</strong> aim for <strong>1,500–1,700 kcal/day</strong>. Never go below <strong>1,200 kcal</strong> — eating too little causes muscle loss, not fat loss.</div>';
-  if(u==="Georgia"&&!ud().calGoal)html+='<div class="mounjaro-tip">Georgia hasn\'t set a calorie goal yet — enter one below when ready.</div>';
-  html+='<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><div class="lbl">Update calorie goal</div><input class="nude-input" type="number" value="'+state.calGoalInput+'" placeholder="e.g. 1600" oninput="state.calGoalInput=this.value"/></div><div style="margin-bottom:10px"><button class="btn" style="background:'+a+'" onclick="setCalGoal()">Save</button></div></div></div>';
-  html+='<div class="card"><div class="serif" style="font-size:20px;font-weight:600;margin-bottom:14px">Mood</div><div style="display:flex;justify-content:space-around">';
-  html+=MOODS.map((m,i)=>'<button class="mood-btn" onclick="logMood('+i+')" style="border-color:'+((tm?.mood??state.moodSel)===i?a:"transparent")+';background:'+((tm?.mood??state.moodSel)===i?th.tag:"transparent")+'">'+m+'</button>').join("");
-  html+='</div></div>';
-  html+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="serif" style="font-size:20px;font-weight:600">Food Log</div>';
-  html+='<button onclick="openScanner()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;border:1.5px solid '+a+';background:'+th.tag+';color:'+th.text+';font-weight:700;font-size:12px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="12.01"/></svg>Scan</button></div>';
-  if(state.scanMsg)html+='<div style="background:'+(state.scanMsg.startsWith("✓")?"#f0f8f2":"#fff8f0")+';border:1px solid '+(state.scanMsg.startsWith("✓")?"#9aab8a":"#e8c97a")+';border-radius:10px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:'+(state.scanMsg.startsWith("✓")?"#5a7050":"#7a5a20")+';font-weight:500">'+state.scanMsg+'</div>';
-  html+='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">';
-  html+='<div class="macro-box"><div class="macro-val" style="color:'+a+'">'+tc+(ud().calGoal?"/"+ud().calGoal:"")+'</div><div class="macro-lbl">Calories</div></div>';
-  html+='<div class="macro-box"><div class="macro-val" style="color:#d08b5b">'+todayProt().toFixed(0)+'g</div><div class="macro-lbl">Protein</div></div>';
-  html+='<div class="macro-box"><div class="macro-val" style="color:#c4a943">'+todayCarb().toFixed(0)+'g</div><div class="macro-lbl">Carbs</div></div>';
-  html+='<div class="macro-box"><div class="macro-val" style="color:#9aab8a">'+todayFat().toFixed(0)+'g</div><div class="macro-lbl">Fat</div></div></div>';
-  html+='<div class="lbl">Food name</div><input class="nude-input" value="'+state.fname+'" placeholder="e.g. Grilled chicken" oninput="state.fname=this.value"/>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px">';
-  html+='<div><div class="lbl">Calories</div><input class="nude-input" type="number" value="'+state.fcal+'" placeholder="kcal" oninput="state.fcal=this.value"/></div>';
-  html+='<div><div class="lbl">Protein (g)</div><input class="nude-input" type="number" value="'+state.fprot+'" placeholder="g" oninput="state.fprot=this.value"/></div>';
-  html+='<div><div class="lbl">Carbs (g)</div><input class="nude-input" type="number" value="'+state.fcarb+'" placeholder="g" oninput="state.fcarb=this.value"/></div>';
-  html+='<div><div class="lbl">Fat (g)</div><input class="nude-input" type="number" value="'+state.ffat+'" placeholder="g" oninput="state.ffat=this.value"/></div></div>';
-  html+='<div style="margin-top:10px"><button class="btn" style="background:'+a+'" onclick="addFood()">+ Add entry</button></div>';
-  if(foods.length>0){html+='<div style="margin-top:14px"><div class="divider"></div>'+foods.map(f=>'<div class="food-row"><div><div style="font-weight:600;font-size:14px">'+f.name+'</div><div style="font-size:11px;color:#b0a898;margin-top:2px">'+f.cal+' kcal · '+f.prot+'g P · '+f.carb+'g C · '+f.fat+'g F</div></div><button onclick="removeFood('+f.id+')" style="background:none;border:none;color:#c5bdb2;font-size:16px;padding:0 4px">✕</button></div>').join("")+'</div>';}
-  html+='</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
-  html+='<div class="card" style="margin-bottom:0"><div class="serif" style="font-size:17px;font-weight:600;margin-bottom:8px">Water</div><div class="serif" style="font-size:22px;font-weight:700;color:#7eafc0;margin-bottom:8px">'+tw+' ml</div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+Math.min(tw/2000*100,100)+'%;background:#7eafc0"></div></div><div class="lbl">Add (ml)</div><input class="nude-input" type="number" value="'+state.water+'" placeholder="e.g. 500" oninput="state.water=this.value" style="margin-bottom:8px"/><button class="btn btn-sm" style="background:#7eafc0" onclick="logWater()">Log</button>'+(todayWater()>0?'<button onclick="removeWater(\''+td()+'\')" style="background:none;border:none;color:#c5bdb2;font-size:11px;margin-top:6px;padding:0;display:block">Clear today</button>':'')+'</div>';
-  html+='<div class="card" style="margin-bottom:0"><div class="serif" style="font-size:17px;font-weight:600;margin-bottom:8px">Steps</div><div class="serif" style="font-size:22px;font-weight:700;color:#9aab8a;margin-bottom:8px">'+ts.toLocaleString()+'</div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+Math.min(ts/10000*100,100)+'%;background:#9aab8a"></div></div><div class="lbl">Add steps</div><input class="nude-input" type="number" value="'+state.steps+'" placeholder="e.g. 3000" oninput="state.steps=this.value" style="margin-bottom:8px"/><button class="btn btn-sm" style="background:#9aab8a" onclick="logSteps()">Log</button>'+(todayStepsVal()>0?'<button onclick="removeSteps(\''+td()+'\')" style="background:none;border:none;color:#c5bdb2;font-size:11px;margin-top:6px;padding:0;display:block">Clear today</button>':'')+'</div>';
-  html+='</div>';
-  return html;
+  let h='<div style="margin-bottom:20px"><div class="serif" style="font-size:28px;font-weight:600">'+new Date().toLocaleDateString("en-AU",{weekday:"long"})+',</div>';
+  h+='<div class="serif" style="font-size:20px;color:#7a6a58">'+new Date().toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"})+'</div></div>';
+  h+='<div class="card" style="display:flex;justify-content:space-around;padding:20px 12px">'+arcSVG(ud().calGoal?tc/ud().calGoal:0,a,tc,"Calories")+arcSVG(tw/2000,"#7eafc0",tw+"ml","Water")+arcSVG(ts/10000,"#9aab8a",ts>=1000?(ts/1000).toFixed(1)+"k":ts||0,"Steps")+arcSVG(1,"#d4b483",MOODS[tm?.mood??state.moodSel],"Mood")+'</div>';
+  h+='<div class="card"><div class="serif" style="font-size:20px;font-weight:600;margin-bottom:14px">Weight</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
+  h+='<div class="stat-box"><div class="stat-label">Current</div><div class="stat-val">'+(lw?lw+" kg":"—")+'</div></div>';
+  if(diff!==null)h+='<div class="stat-box"><div class="stat-label">Change</div><div class="stat-val" style="color:'+(+diff<0?"#5a8f6a":"#c0504a")+'">'+(+diff>0?"+":"")+diff+' kg</div></div>';
+  if(lost)h+='<div class="stat-box"><div class="stat-label">Total lost</div><div class="stat-val" style="color:#5a8f6a">−'+lost+' kg</div></div>';
+  h+='<div class="stat-box"><div class="stat-label">Goal</div><div class="stat-val" style="color:'+a+'">'+(ud().goalWeight?ud().goalWeight+" kg":"—")+'</div></div></div><div class="divider"></div>';
+  h+='<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><div class="lbl">Log today\'s weight (kg)</div><input class="nude-input" type="number" step="0.1" value="'+state.wt+'" placeholder="e.g. 115.0" oninput="state.wt=this.value"/></div><div style="margin-bottom:10px"><button class="btn" style="background:'+a+'" onclick="logWeight()">Log</button></div></div>';
+  h+='<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><div class="lbl">Set goal weight (kg)</div><input class="nude-input" type="number" step="0.1" value="'+state.goalWt+'" placeholder="Currently '+(ud().goalWeight||"—")+' kg" oninput="state.goalWt=this.value"/></div><div style="margin-bottom:10px"><button class="btn btn-outline" onclick="setGoalWeight()">Set</button></div></div>';
+  if(ud().weights.length>0){h+='<div style="margin-top:14px"><div class="divider"></div><div class="lbl">Weight history</div>';h+=[...ud().weights].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7).map(w=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f0e8"><span style="font-size:13px;color:#7a6a58">'+fmtDate(w.date)+'</span><div style="display:flex;align-items:center;gap:10px"><span style="font-weight:700;font-size:14px;font-family:\'Cormorant Garamond\',serif">'+w.kg+' kg</span><button onclick="removeWeight(\''+w.date+'\')" style="background:none;border:none;color:#c5bdb2;font-size:14px;padding:0 2px">✕</button></div></div>').join("");h+='</div>';}
+  h+='</div>';
+  h+='<div class="card"><div class="serif" style="font-size:20px;font-weight:600;margin-bottom:4px">Calorie Goal</div><div style="font-size:12px;color:#b0a898;margin-bottom:12px">Target: <strong style="color:'+a+'">'+(ud().calGoal?ud().calGoal+" kcal/day":"Not set yet")+'</strong></div>';
+  if(u==="Elloise")h+='<div class="mounjaro-tip"><strong>On Mounjaro:</strong> aim for <strong>1,500–1,700 kcal/day</strong>. Never go below <strong>1,200 kcal</strong> — eating too little causes muscle loss, not fat loss.</div>';
+  if(u==="Georgia"&&!ud().calGoal)h+='<div class="mounjaro-tip">Georgia hasn\'t set a calorie goal yet — enter one below when ready.</div>';
+  h+='<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><div class="lbl">Update calorie goal</div><input class="nude-input" type="number" value="'+state.calGoalInput+'" placeholder="e.g. 1600" oninput="state.calGoalInput=this.value"/></div><div style="margin-bottom:10px"><button class="btn" style="background:'+a+'" onclick="setCalGoal()">Save</button></div></div></div>';
+  h+='<div class="card"><div class="serif" style="font-size:20px;font-weight:600;margin-bottom:14px">Mood</div><div style="display:flex;justify-content:space-around">'+MOODS.map((m,i)=>'<button class="mood-btn" onclick="logMood('+i+')" style="border-color:'+((tm?.mood??state.moodSel)===i?a:"transparent")+';background:'+((tm?.mood??state.moodSel)===i?th.tag:"transparent")+'">'+m+'</button>').join("")+'</div></div>';
+  h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="serif" style="font-size:20px;font-weight:600">Food Log</div>';
+  h+='<button onclick="openScanner()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;border:1.5px solid '+a+';background:'+th.tag+';color:'+th.text+';font-weight:700;font-size:12px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="12.01"/></svg>Scan</button></div>';
+  if(state.scanMsg)h+='<div style="background:'+(state.scanMsg.startsWith("✓")?"#f0f8f2":"#fff8f0")+';border:1px solid '+(state.scanMsg.startsWith("✓")?"#9aab8a":"#e8c97a")+';border-radius:10px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:'+(state.scanMsg.startsWith("✓")?"#5a7050":"#7a5a20")+';font-weight:500">'+state.scanMsg+'</div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"><div class="macro-box"><div class="macro-val" style="color:'+a+'">'+tc+(ud().calGoal?"/"+ud().calGoal:"")+'</div><div class="macro-lbl">Calories</div></div><div class="macro-box"><div class="macro-val" style="color:#d08b5b">'+todayProt().toFixed(0)+'g</div><div class="macro-lbl">Protein</div></div><div class="macro-box"><div class="macro-val" style="color:#c4a943">'+todayCarb().toFixed(0)+'g</div><div class="macro-lbl">Carbs</div></div><div class="macro-box"><div class="macro-val" style="color:#9aab8a">'+todayFat().toFixed(0)+'g</div><div class="macro-lbl">Fat</div></div></div>';
+  h+='<div class="lbl">Food name</div><input class="nude-input" value="'+state.fname+'" placeholder="e.g. Grilled chicken" oninput="state.fname=this.value"/>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px"><div><div class="lbl">Calories</div><input class="nude-input" type="number" value="'+state.fcal+'" placeholder="kcal" oninput="state.fcal=this.value"/></div><div><div class="lbl">Protein (g)</div><input class="nude-input" type="number" value="'+state.fprot+'" placeholder="g" oninput="state.fprot=this.value"/></div><div><div class="lbl">Carbs (g)</div><input class="nude-input" type="number" value="'+state.fcarb+'" placeholder="g" oninput="state.fcarb=this.value"/></div><div><div class="lbl">Fat (g)</div><input class="nude-input" type="number" value="'+state.ffat+'" placeholder="g" oninput="state.ffat=this.value"/></div></div>';
+  h+='<div style="margin-top:10px"><button class="btn" style="background:'+a+'" onclick="addFood()">+ Add entry</button></div>';
+  if(foods.length>0){h+='<div style="margin-top:14px"><div class="divider"></div>'+foods.map(f=>'<div class="food-row"><div><div style="font-weight:600;font-size:14px">'+f.name+'</div><div style="font-size:11px;color:#b0a898;margin-top:2px">'+f.cal+' kcal · '+f.prot+'g P · '+f.carb+'g C · '+f.fat+'g F</div></div><button onclick="removeFood('+f.id+')" style="background:none;border:none;color:#c5bdb2;font-size:16px;padding:0 4px">✕</button></div>').join("")+'</div>';}
+  h+='</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+  h+='<div class="card" style="margin-bottom:0"><div class="serif" style="font-size:17px;font-weight:600;margin-bottom:8px">Water</div><div class="serif" style="font-size:22px;font-weight:700;color:#7eafc0;margin-bottom:8px">'+tw+' ml</div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+Math.min(tw/2000*100,100)+'%;background:#7eafc0"></div></div><div class="lbl">Add (ml)</div><input class="nude-input" type="number" value="'+state.water+'" placeholder="e.g. 500" oninput="state.water=this.value" style="margin-bottom:8px"/><button class="btn btn-sm" style="background:#7eafc0" onclick="logWater()">Log</button>'+(todayWater()>0?'<button onclick="removeWater(\''+td()+'\')" style="background:none;border:none;color:#c5bdb2;font-size:11px;margin-top:6px;padding:0;display:block">Clear today</button>':'')+'</div>';
+  h+='<div class="card" style="margin-bottom:0"><div class="serif" style="font-size:17px;font-weight:600;margin-bottom:8px">Steps</div><div class="serif" style="font-size:22px;font-weight:700;color:#9aab8a;margin-bottom:8px">'+ts.toLocaleString()+'</div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+Math.min(ts/10000*100,100)+'%;background:#9aab8a"></div></div><div class="lbl">Add steps</div><input class="nude-input" type="number" value="'+state.steps+'" placeholder="e.g. 3000" oninput="state.steps=this.value" style="margin-bottom:8px"/><button class="btn btn-sm" style="background:#9aab8a" onclick="logSteps()">Log</button>'+(todayStepsVal()>0?'<button onclick="removeSteps(\''+td()+'\')" style="background:none;border:none;color:#c5bdb2;font-size:11px;margin-top:6px;padding:0;display:block">Clear today</button>':'')+'</div>';
+  h+='</div>';return h;
 }
 function buildWeeklySummary(a){
   const l7=last7();
@@ -226,43 +205,34 @@ function buildWeeklySummary(a){
 }
 function buildProgress(){
   const u=state.user,a=accent(),lw=latestWt(),l7=last7();
-  const wtDates=[...new Set(ud().weights.map(w=>w.date))].sort().slice(-14);
-  const wtChartData=wtDates.map(d=>({date:fmtDate(d),kg:ud().weights.find(w=>w.date===d)?.kg||null}));
-  let html='<div class="serif" style="font-size:26px;font-weight:600;margin-bottom:20px;margin-top:4px">'+u+"'s Progress</div>";
-  html+=buildWeeklySummary(a);
-  if(lw&&ud().goalWeight){const gone=lw<=ud().goalWeight;html+='<div class="card" style="display:flex;justify-content:space-between;align-items:center;border-color:'+(gone?"#9aab8a":"#ede8df")+'"><div><div class="lbl">'+(gone?"Goal reached":"Remaining")+'</div><div class="serif" style="font-size:26px;font-weight:700;color:'+(gone?"#5a8f6a":"#2c2417")+'">'+(gone?"Goal reached!":(lw-ud().goalWeight).toFixed(1)+" kg to go")+'</div></div><div style="font-size:36px;opacity:.5">'+(gone?"✦":"◈")+'</div></div>';}
-  html+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Weight Journey</div>'+lineChart(wtChartData,"kg",a,ud().goalWeight)+'</div>';
-  html+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Calories This Week</div>'+barChart(l7,"cals",a)+(ud().calGoal?'<div style="font-size:11px;color:#b0a898;text-align:right;margin-top:4px">Goal: '+ud().calGoal+' kcal</div>':"")+'</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px"><div class="card" style="margin-bottom:0"><div class="serif" style="font-size:15px;font-weight:600;margin-bottom:12px">Water (ml)</div>'+barChart(l7,"water","#7eafc0",80)+'</div><div class="card" style="margin-bottom:0"><div class="serif" style="font-size:15px;font-weight:600;margin-bottom:12px">Steps</div>'+barChart(l7,"steps","#9aab8a",80)+'</div></div>';
-  html+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Mood History</div><div style="display:flex;gap:8px;flex-wrap:wrap">';
-  html+=[...ud().moods].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,14).map(m=>'<div style="background:#faf8f5;border:1px solid #ede8df;border-radius:10px;padding:8px 10px;text-align:center"><div style="font-size:22px">'+MOODS[m.mood]+'</div><div style="font-size:9px;color:#b0a898;font-weight:700;margin-top:3px">'+fmtDate(m.date)+'</div></div>').join("");
-  if(ud().moods.length===0)html+='<div style="color:#b0a898;font-size:13px">No entries yet</div>';
-  html+='</div></div>';return html;
+  const wtD=[...new Set(ud().weights.map(w=>w.date))].sort().slice(-14);
+  const wtC=wtD.map(d=>({date:fmtDate(d),kg:ud().weights.find(w=>w.date===d)?.kg||null}));
+  let h='<div class="serif" style="font-size:26px;font-weight:600;margin-bottom:20px;margin-top:4px">'+u+"'s Progress</div>";
+  h+=buildWeeklySummary(a);
+  if(lw&&ud().goalWeight){const gone=lw<=ud().goalWeight;h+='<div class="card" style="display:flex;justify-content:space-between;align-items:center;border-color:'+(gone?"#9aab8a":"#ede8df")+'"><div><div class="lbl">'+(gone?"Goal reached":"Remaining")+'</div><div class="serif" style="font-size:26px;font-weight:700;color:'+(gone?"#5a8f6a":"#2c2417")+'">'+(gone?"Goal reached!":(lw-ud().goalWeight).toFixed(1)+" kg to go")+'</div></div><div style="font-size:36px;opacity:.5">'+(gone?"✦":"◈")+'</div></div>';}
+  h+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Weight Journey</div>'+lineChart(wtC,"kg",a,ud().goalWeight)+'</div>';
+  h+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Calories This Week</div>'+barChart(l7,"cals",a)+(ud().calGoal?'<div style="font-size:11px;color:#b0a898;text-align:right;margin-top:4px">Goal: '+ud().calGoal+' kcal</div>':"")+'</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px"><div class="card" style="margin-bottom:0"><div class="serif" style="font-size:15px;font-weight:600;margin-bottom:12px">Water (ml)</div>'+barChart(l7,"water","#7eafc0",80)+'</div><div class="card" style="margin-bottom:0"><div class="serif" style="font-size:15px;font-weight:600;margin-bottom:12px">Steps</div>'+barChart(l7,"steps","#9aab8a",80)+'</div></div>';
+  h+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Mood History</div><div style="display:flex;gap:8px;flex-wrap:wrap">';
+  h+=[...ud().moods].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,14).map(m=>'<div style="background:#faf8f5;border:1px solid #ede8df;border-radius:10px;padding:8px 10px;text-align:center"><div style="font-size:22px">'+MOODS[m.mood]+'</div><div style="font-size:9px;color:#b0a898;font-weight:700;margin-top:3px">'+fmtDate(m.date)+'</div></div>').join("");
+  if(ud().moods.length===0)h+='<div style="color:#b0a898;font-size:13px">No entries yet</div>';
+  h+='</div></div>';return h;
 }
 function buildTogether(){
   const t=td();
   const cd=[...new Set([...state.data.Elloise.weights.map(w=>w.date),...state.data.Georgia.weights.map(w=>w.date)])].sort().slice(-14);
-  let html='<div class="serif" style="font-size:26px;font-weight:600;margin-bottom:20px;margin-top:4px">Together</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
-  html+=USERS.map(u=>{const ud2=state.data[u];const lw2=[...ud2.weights].sort((a,b)=>b.date.localeCompare(a.date))[0]?.kg;const tC=ud2.foods.filter(f=>f.date===t).reduce((s,f)=>s+f.cal,0);const tW=(ud2.waters.find(w=>w.date===t)||{ml:0}).ml;const tS=(ud2.steps.find(s=>s.date===t)||{count:0}).count;const tM=ud2.moods.find(m=>m.date===t);return'<div class="card" style="border-color:'+THEME[u].dot+'55;margin-bottom:0"><div style="display:flex;align-items:center;gap:7px;margin-bottom:14px"><span class="dot" style="background:'+THEME[u].dot+'"></span><span class="serif" style="font-size:16px;font-weight:600">'+u+'</span></div>'+[["Weight",lw2?lw2+" kg":"—"],["Calories",tC+" kcal"],["Water",tW+" ml"],["Steps",tS.toLocaleString()],["Mood",tM?MOODS[tM.mood]:"—"]].map(([l,v])=>'<div class="together-row"><span style="color:#b0a898;font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:10px">'+l+'</span><span style="font-weight:700;color:'+THEME[u].text+';font-size:13px">'+v+'</span></div>').join("")+'</div>';}).join("");
-  html+='</div>';
-  html+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Weight Comparison</div>';
+  let h='<div class="serif" style="font-size:26px;font-weight:600;margin-bottom:20px;margin-top:4px">Together</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
+  h+=USERS.map(u=>{const ud2=state.data[u];const lw2=[...ud2.weights].sort((a,b)=>b.date.localeCompare(a.date))[0]?.kg;const tC=ud2.foods.filter(f=>f.date===t).reduce((s,f)=>s+f.cal,0);const tW=(ud2.waters.find(w=>w.date===t)||{ml:0}).ml;const tS=(ud2.steps.find(s=>s.date===t)||{count:0}).count;const tM=ud2.moods.find(m=>m.date===t);return'<div class="card" style="border-color:'+THEME[u].dot+'55;margin-bottom:0"><div style="display:flex;align-items:center;gap:7px;margin-bottom:14px"><span class="dot" style="background:'+THEME[u].dot+'"></span><span class="serif" style="font-size:16px;font-weight:600">'+u+'</span></div>'+[["Weight",lw2?lw2+" kg":"—"],["Calories",tC+" kcal"],["Water",tW+" ml"],["Steps",tS.toLocaleString()],["Mood",tM?MOODS[tM.mood]:"—"]].map(([l,v])=>'<div class="together-row"><span style="color:#b0a898;font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:10px">'+l+'</span><span style="font-weight:700;color:'+THEME[u].text+';font-size:13px">'+v+'</span></div>').join("")+'</div>';}).join("");
+  h+='</div><div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Weight Comparison</div>';
   const compData=cd.map(d=>({date:fmtDate(d),Elloise:state.data.Elloise.weights.find(w=>w.date===d)?.kg||null,Georgia:state.data.Georgia.weights.find(w=>w.date===d)?.kg||null}));
-  if(compData.filter(d=>d.Elloise||d.Georgia).length>1){
-    html+=lineChart(compData,"Elloise",THEME.Elloise.dot,null);
-    html+='<div style="margin-top:8px">'+lineChart(compData,"Georgia",THEME.Georgia.dot,null)+'</div>';
-    html+='<div style="display:flex;gap:12px;margin-top:8px;font-size:12px"><span><span class="dot" style="background:'+THEME.Elloise.dot+';margin-right:4px"></span>Elloise</span><span><span class="dot" style="background:'+THEME.Georgia.dot+';margin-right:4px"></span>Georgia</span></div>';
-  }else{html+='<div style="text-align:center;padding:30px 0;color:#b0a898;font-size:13px">Log weight for both to see comparison</div>';}
-  html+='</div>';
-  html+='<div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Logging Streaks</div>';
-  html+=USERS.map(u=>{const ud2=state.data[u];let streak=0;const d=new Date();while(true){const p=n=>String(n).padStart(2,"0");const ds=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());if(ud2.weights.find(w=>w.date===ds)){streak++;d.setDate(d.getDate()-1);}else break;}return'<div class="streak-row"><div style="display:flex;align-items:center;gap:10px"><span class="dot" style="background:'+THEME[u].dot+'"></span><div><div style="font-weight:600;font-size:14px">'+u+'</div><div style="font-size:11px;color:#b0a898">'+streak+' day streak</div></div></div><div style="font-size:24px;opacity:'+(streak>0?1:.3)+'">'+(streak>=7?"🏆":streak>=3?"◈":streak>=1?"◇":"—")+'</div></div>';}).join("");
-  html+='</div>';return html;
+  if(compData.filter(d=>d.Elloise||d.Georgia).length>1){h+=lineChart(compData,"Elloise",THEME.Elloise.dot,null)+'<div style="margin-top:8px">'+lineChart(compData,"Georgia",THEME.Georgia.dot,null)+'</div><div style="display:flex;gap:12px;margin-top:8px;font-size:12px"><span><span class="dot" style="background:'+THEME.Elloise.dot+';margin-right:4px"></span>Elloise</span><span><span class="dot" style="background:'+THEME.Georgia.dot+';margin-right:4px"></span>Georgia</span></div>';}
+  else h+='<div style="text-align:center;padding:30px 0;color:#b0a898;font-size:13px">Log weight for both to see comparison</div>';
+  h+='</div><div class="card"><div class="serif" style="font-size:18px;font-weight:600;margin-bottom:14px">Logging Streaks</div>';
+  h+=USERS.map(u=>{const ud2=state.data[u];let streak=0;const d=new Date();while(true){const p=n=>String(n).padStart(2,"0");const ds=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());if(ud2.weights.find(w=>w.date===ds)){streak++;d.setDate(d.getDate()-1);}else break;}return'<div class="streak-row"><div style="display:flex;align-items:center;gap:10px"><span class="dot" style="background:'+THEME[u].dot+'"></span><div><div style="font-weight:600;font-size:14px">'+u+'</div><div style="font-size:11px;color:#b0a898">'+streak+' day streak</div></div></div><div style="font-size:24px;opacity:'+(streak>0?1:.3)+'">'+(streak>=7?"🏆":streak>=3?"◈":streak>=1?"◇":"—")+'</div></div>';}).join("");
+  h+='</div>';return h;
 }
-function buildScanner(){
-  const a=accent(),s=state.scannerStatus;
-  const lbl={starting:"Starting camera…",scanning:"Scan a barcode",fetching:"Looking up…",error:"Not found"}[s]||"";
-  return '<div class="scanner-overlay"><button onclick="closeScanner()" style="position:absolute;top:52px;right:20px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:42px;height:42px;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">✕</button><div class="serif" style="color:#e8dfd0;font-size:22px;font-weight:600;margin-bottom:24px">'+lbl+'</div><div class="scanner-box" id="scanner-box"><video id="scanner-video" class="scanner-video" muted playsinline></video>'+(s==="scanning"?'<div class="scan-line"></div>':'')+(s==="fetching"?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center"><div class="spinner"></div></div>':'')+'</div>'+(s==="error"&&state.scannerErr?'<div style="margin-top:20px;max-width:300px;text-align:center;color:#f5e4c8;font-size:13px;line-height:1.6;padding:12px 20px;background:rgba(255,255,255,.08);border-radius:12px">'+state.scannerErr+'<div style="margin-top:12px"><button onclick="closeScanner()" style="background:'+a+';border:none;border-radius:8px;padding:8px 20px;color:#fff;font-weight:700">OK</button></div></div>':'')+'</div>';
-}
+function buildScanner(){const a=accent(),s=state.scannerStatus;const lbl={starting:"Starting camera…",scanning:"Scan a barcode",fetching:"Looking up…",error:"Not found"}[s]||"";return'<div class="scanner-overlay"><button onclick="closeScanner()" style="position:absolute;top:52px;right:20px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:42px;height:42px;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">✕</button><div class="serif" style="color:#e8dfd0;font-size:22px;font-weight:600;margin-bottom:24px">'+lbl+'</div><div class="scanner-box" id="scanner-box"><video id="scanner-video" class="scanner-video" muted playsinline></video>'+(s==="scanning"?'<div class="scan-line"></div>':"")+(s==="fetching"?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center"><div class="spinner"></div></div>':"")+'</div>'+(s==="error"&&state.scannerErr?'<div style="margin-top:20px;max-width:300px;text-align:center;color:#f5e4c8;font-size:13px;line-height:1.6;padding:12px 20px;background:rgba(255,255,255,.08);border-radius:12px">'+state.scannerErr+'<div style="margin-top:12px"><button onclick="closeScanner()" style="background:'+a+';border:none;border-radius:8px;padding:8px 20px;color:#fff;font-weight:700">OK</button></div></div>':'')+'</div>';}
 function switchUser(u){state.user=u;render();}
 function switchTab(t){state.tab=t;render();}
 function logWeight(){const w=parseFloat(state.wt);if(!w)return;const nw=ud().weights.filter(x=>x.date!==td());nw.push({date:td(),kg:w});state.wt="";persist({...state.data,[state.user]:{...ud(),weights:nw}});}
